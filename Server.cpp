@@ -3,8 +3,11 @@
 #include <vector>
 #include <string>
 #include <mutex>
-#include <netinet/in.h> // For sockets (Linux/Mac)
-#include <unistd.h>     // For close()
+#include <algorithm>    // For std::remove
+#include <winsock2.h>   // For socket functions (Windows)
+#include <ws2tcpip.h>   // For sockaddr_in (Windows)
+#pragma comment(lib, "ws2_32.lib") // Link with Ws2_32.lib
+#include <cstring>      // For memset
 
 #define PORT 8080
 
@@ -31,7 +34,7 @@ void handle_client(int client_fd) {
         int bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
         if (bytes_received <= 0) {
             std::cout << "Client disconnected.\n";
-            close(client_fd);
+            closesocket(client_fd);
             std::lock_guard<std::mutex> lock(clients_mutex);
             clients.erase(std::remove(clients.begin(), clients.end(), client_fd), clients.end());
             break;
@@ -56,7 +59,7 @@ int main() {
     }
 
     // Bind socket
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt))) {
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
